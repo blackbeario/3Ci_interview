@@ -52,39 +52,76 @@ class DisplayWidgetState extends State<DisplayWidget> {
 _showDescriptionEditForm(context, MockResult item, MockApiService service) {
   TextEditingController controller = TextEditingController();
 
-  submitDescription(id, String newDescription) {
-    service.patchResult(id, description: newDescription);
+  submitDescription(id, String newDescription) async {
+    var result = await service.patchResult(id, description: newDescription);
+    return result;
   }
 
   return showModalBottomSheet<void>(
     context: context,
-    builder: (BuildContext context) {
-      return SizedBox(
-        height: 200,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Text(item.name),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 0),
-                child: TextFormField(
-                  // controller: controller,
-                  initialValue: item.description,
-                ),
-              ),
-              ElevatedButton(
-                child: const Text('Submit'),
-                onPressed: () {
-                  submitDescription(item.id, controller.text);
-                  Navigator.pop(context);
-                },
-              ),
-            ],
+    builder: (context) {
+      bool success = false;
+      String exception = '';
+
+      return StatefulBuilder(builder: (BuildContext context, StateSetter setModalState) {
+        controller.text = item.description;
+
+        return SizedBox(
+          height: 200,
+          child: Center(
+            child: success == true
+                ? const Text('Success!', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold))
+                : exception.isNotEmpty
+                    ? Column(children: [
+                        Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          exception,
+                          style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                        )
+                      ])
+                    : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          Wrap(children: [
+                            Text(item.name),
+                          ]),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(30, 0, 30, 20),
+                            child: TextField(
+                              controller: controller,
+                              decoration: const InputDecoration(hintText: 'add description'),
+                            ),
+                          ),
+                          ElevatedButton(
+                            child: const Text('Submit'),
+                            onPressed: () async {
+                              try {
+                                var result = await submitDescription(item.id, controller.text);
+                                if (result.description.isNotEmpty) {
+                                  setModalState(() => success = true);
+                                  Future.delayed(const Duration(seconds: 2), () {
+                                    Navigator.pop(context);
+                                  });
+                                }
+                              } catch (e) {
+                                setModalState(() => exception = e.toString());
+                              }
+                            },
+                          ),
+                        ],
+                      ),
           ),
-        ),
-      );
+        );
+      });
     },
   );
 }
